@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Sorting Algorithm Animation</title>
+</head>
+<script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+<script src="async.js"></script>
+
+<script>
+
+
+var sort = function(){
+	var maxHeight = 320;
+	var maxWidth = 800;
+	var tmAnimateInterval = 300;
+	var data;
+	var isMove=false;
+	var isDone=false;
+	var isUpdate=false;
+	var colorDefault = "rgb(173, 216, 230)";
+	var colorBrown = "rgb(165, 42,42)";
+	var colorBlue = "rgb(0, 0, 255)";
+	var colorGreen = "rgb(0, 255, 0)";
+	var colorOrange = "rgb(255, 165, 0)";
+
+	this.genData = function genData(){
+		var i=0;
+		var j=30;		
+		data = [25,8,7,19,26,20,23,14,12,3,10,6,1,28,4,24,2,30,15,22,18,16,11,17,29,27,13,9,5,21];
+		// data = [2,1,3,5,7,4,6,9,10,8,11,13,12,14,15,17,16,18,19,21,22,20,23,26,25,24,27,29,30,28];
+		stateStack = [];
+		
+		var newData = d3.select("#viz-canvas");
+		newData.selectAll("g").remove();
+		for(var i=0; i<30; i++){
+			var dataPositionX = i*10+10;
+			var dataPositionY = maxHeight-data[i]*10;
+			newData = d3.select("#viz-canvas").append("g");
+			var translateStr = "translate("+dataPositionX+", "+dataPositionY+")";
+			newData.attr("transform",translateStr).attr("id", "data"+i);
+			var rect = newData.append("rect");
+			rect.attr("width", 8).attr("height", data[i]*10).style("fill", colorDefault);
+		}
+	}
+
+	function swap(a, b) {
+		var tmp = data[a];
+		data[a] = data[b];
+		data[b] = tmp;
+	}
+
+	this.next = function(state){
+		console.log(state);
+
+		if(state.isDone==true){
+			for(var i=0; i<data.length; i++){
+				d3.select("#data"+i).select("rect").transition().style("fill", colorDefault);
+			}
+		}
+	
+		if(state.isPostState==true){
+			d3.select("#data"+state.sel).select("rect").transition().style("fill", colorOrange);	
+		}
+		else{
+			d3.select("#data"+state.position).select("rect").transition().style("fill", colorOrange);
+			d3.select("#data"+state.sel).select("rect").transition().style("fill", colorGreen);
+		}
+
+		if(state.isSwap){
+			var stringA = d3.transform(d3.select("#data"+state.sel).attr("transform"));
+			var stringB = d3.transform(d3.select("#data"+state.position).attr("transform"));
+			d3.select("#data"+state.sel).transition()
+				.attr("transform", "translate("+(stringB.translate[0])+", "+stringA.translate[1]+")")
+				.attr("id", "data"+(state.position));
+			d3.select("#data"+state.position).transition()
+				.attr("transform", "translate("+(stringA.translate[0])+", "+stringB.translate[1]+")")
+				.attr("id", "data"+(state.sel));
+		}
+	}
+
+
+	var insertionSort = function(){
+
+		var play = function(state){
+			console.log(state);
+
+			if(state.isDone==true){
+				for(var i=0; i<data.length; i++){
+					d3.select("#data"+i).select("rect").transition().style("fill", colorDefault);
+				}
+				return;
+			}
+		
+			if(state.isPostState==true){
+				d3.select("#data"+state.sel).select("rect").transition().style("fill", colorOrange);	
+			}
+			else{
+				d3.select("#data"+state.position).select("rect").transition().style("fill", colorOrange);
+				d3.select("#data"+state.sel).select("rect").transition().style("fill", colorGreen);
+			}
+
+			if(state.isSwap){
+				var stringA = d3.transform(d3.select("#data"+state.sel).attr("transform"));
+				var stringB = d3.transform(d3.select("#data"+state.position).attr("transform"));
+				d3.select("#data"+state.sel).transition()
+					.attr("transform", "translate("+(stringB.translate[0])+", "+stringA.translate[1]+")")
+					.attr("id", "data"+(state.position));
+				d3.select("#data"+state.position).transition()
+					.attr("transform", "translate("+(stringA.translate[0])+", "+stringB.translate[1]+")")
+					.attr("id", "data"+(state.sel));
+			}
+		}
+		console.log(data);
+
+		var state = function(sel, position, isSwap, isPostState, isDone){
+			this.sel = sel;
+			this.position = position;
+			this.isSwap = isSwap;
+			this.isPostState = isPostState;
+			this.isDone = isDone;
+		}
+
+		for(var i=0; i<data.length-1; i++){
+			var preState = new state(i+1, i, false, false, false);
+			stateStack.push(preState);
+			for(var j=i+1; j>0 && data[j]<data[j-1]; j--){
+				var tmpState = new state(j, j-1, true, false, false);
+				stateStack.push(tmpState);
+				swap(j,j-1);
+			}
+			var postState = new state(j, 0, false, true, false);
+			stateStack.push(postState);
+		}
+		var doneState = new state(j, 0, false, true, true);
+		stateStack.push(doneState);
+		console.log(data);
+		for(var i=0; i<stateStack.length; i++){
+			console.log(stateStack[i]);
+		}
+
+		console.log("#### start animation ####");
+		var animStep=0;
+		setInterval(function() {
+				console.log(animStep);
+				play(stateStack[animStep]);
+				animStep++;
+			}, tmAnimateInterval);
+	}
+
+	var selectionSort = function(){
+
+		var play = function(state){
+			console.log(state);
+
+			if(state.isDone){
+				for(var k=0; k<data.length; k++){
+					d3.select("#data"+k).select("rect").transition().style("fill", colorDefault);
+				}
+				return;
+			}
+
+			for(var k=state.position; k<data.length; k++){
+				if(k==state.position){
+					d3.select("#data"+k).select("rect").transition().style("fill", colorBrown);
+				}
+				else if(k==state.minPos){
+					d3.select("#data"+k).select("rect").transition().style("fill", colorOrange);
+				}
+				else if(k==state.sel){
+					d3.select("#data"+k).select("rect").transition().style("fill", colorGreen);
+				}
+				else{
+					d3.select("#data"+k).select("rect").transition().style("fill", colorDefault);
+				}
+			}
+
+			if(state.isSwap){
+				var stringA = d3.transform(d3.select("#data"+state.minPos).attr("transform"));
+				var stringB = d3.transform(d3.select("#data"+state.position).attr("transform"));
+				var d3MinPos = d3.select("#data"+state.minPos);
+				d3MinPos.transition()
+					.attr("transform", "translate("+(stringB.translate[0])+", "+stringA.translate[1]+")")
+					.attr("id", "data"+(state.position));
+				d3MinPos.select("rect").transition()
+					.style("fill", colorBlue);
+				d3.select("#data"+state.position).transition()
+					.attr("transform", "translate("+(stringA.translate[0])+", "+stringB.translate[1]+")")
+					.attr("id", "data"+(state.minPos));
+			}
+		}
+
+		console.log("##### "+data.length);
+		console.log(data);
+		var state = function(sel, minPos, position, isSwap, isDone){
+			this.sel = sel;
+			this.minPos = minPos;
+			this.position = position;
+			this.isSwap = isSwap;
+			this.isDone = isDone;
+		}
+		
+		for(var i=0; i<data.length; i++){
+			var minPos = i;
+			for(var j=i+1; j<data.length; j++){
+				var preState = new state(j, minPos, i, false, false);
+				stateStack.push(preState);
+				if(data[minPos]>data[j]){
+					minPos=j;
+					var tmpState = new state(j, minPos, i, false, false);
+					stateStack.push(tmpState);
+				}
+			}
+			console.log([minPos, i]);
+			swap(minPos, i);
+			var swapState = new state(0, minPos, i, true, false);
+			stateStack.push(swapState);
+		}
+		var doneState = new state(0, 0, 0, false, true);
+		stateStack.push(doneState);
+		console.log(data);
+		for(var i=0; i<stateStack.length; i++){
+			console.log(stateStack[i]);
+		}
+
+		console.log("#### start animation ####");
+		var animStep=0;
+		setInterval(function() {
+				console.log(animStep);
+				play(stateStack[animStep]);
+				animStep++;
+			}, tmAnimateInterval);
+	}
+	
+	var bubbleSort = function(){
+		var state = function(i, j, isMove, isDone){
+			this.i = i;
+			this.j = j;
+			this.isMove = isMove;
+			this.isDone = isDone
+		}
+
+		var dumpStack = function(stateStack){
+			var state = stateStack.pop();
+			console.log("i="+state.i+" j="+state.j+" isMove"+this.isMove+" len="+stateStack.length);
+		}
+
+		var play = function(stateStack, i){
+			console.log(stateStack[i]);
+			var a = stateStack[i].i;
+			var b = a+1;
+			var d3A = d3.select("#data"+a);
+			var d3B = d3.select("#data"+b);
+
+			if(stateStack[i].isDone){
+				for(var i=0; i<data.length; i++){
+					d3.select("#data"+i).select("rect").transition().style("fill", colorDefault);
+				}
+				return;
+			}
+			d3A.select("rect").transition().style("fill", colorBrown);
+			d3B.select("rect").transition().style("fill", colorGreen);
+
+			if(a>0){
+				d3.select("#data"+(a-1)).select("rect").transition().style("fill", colorDefault);
+			}
+
+			if(stateStack[i].isMove==true){
+				var stringA = d3.transform(d3A.attr("transform"));
+				var stringB = d3.transform(d3B.attr("transform"));
+				d3A.transition()
+					.attr("transform", "translate("+stringB.translate[0]+", "+stringA.translate[1]+")")
+					.attr("id", "data"+b);
+				
+				d3B.transition()
+					.attr("transform", "translate("+stringA.translate[0]+", "+stringB.translate[1]+")")
+					.attr("id", "data"+a);
+
+				if(b==stateStack[i].j-1){
+					d3A.select("rect").transition().style("fill", colorBlue);
+					d3B.select("rect").transition().style("fill", colorDefault);
+				}
+			}
+			else{
+				if(b==stateStack[i].j-1){
+					d3A.select("rect").transition().style("fill", colorDefault);
+					d3B.select("rect").transition().style("fill", colorBlue);
+				}
+			}
+		}
+
+		var i = 0;
+		var j = data.length;
+		while(isDone==false){
+			var tmpState = new state();
+			tmpState.i=i;
+			tmpState.j=j;
+			console.log("i="+i+" j="+j);
+			console.log("i="+data[i]+" i+1="+data[i+1]+" j="+data[j-1]);
+			if(j==1){
+				isDone=true;
+				break;
+			}
+
+			if(j-1>i){
+				if(data[i+1]<data[i]){
+					isMove=true;
+				}
+				i++;
+				console.log("i="+i+" j="+j+" "+isMove);
+			}
+			else{
+				j--;
+				i = 0;
+				continue;
+			}
+			isUpdate=true;
+	
+			console.log(" "+isUpdate+" "+isMove);
+			if(isUpdate==true){
+				if(isMove==true){
+					swap(i-1, i);
+				}
+			}
+
+			tmpState.isMove=isMove;
+			tmpState.isDone=false;
+			stateStack.push(tmpState);
+
+			isMove=false;
+			isUpdate=false;
+		}
+		var doneState = new state(0, 0, false, true);
+		stateStack.push(doneState);
+		console.log("#### start animation ####");
+		var animStep=0;
+		setInterval(function() {
+				console.log(animStep);
+				play(stateStack, animStep);
+				animStep++;
+			}, tmAnimateInterval);
+	}
+
+	
+
+	var quickSort = function(){
+		var stack = [];
+		stack.push([0, data.length]);
+
+		var state = function(pivotPos, length, i, j, isSwap, isDone){
+			this.pivotPos = pivotPos;
+			this.length = length;
+			this.i = i;
+			this.j = j;
+			this.isSwap = isSwap;
+			this.isDone = isDone;
+		}
+
+		var play = function(state){
+			console.log(state);
+			if(state.isDone){
+				for(var k=0; k<data.length; k++){
+					d3.select("#data"+k).select("rect").transition().style("fill", colorDefault);
+				}
+				return;
+			}
+
+			for(var k=0; k<data.length; k++){
+				if((k<state.i) && (k>state.pivotPos)){
+					d3.select("#data"+k).select("rect").transition().style("fill", colorBlue);
+				}
+				else if((k>state.j) && (k<(state.pivotPos+state.length))){
+					d3.select("#data"+k).select("rect").transition().style("fill", colorBlue);
+				}
+				else if((k>state.i) && (k<state.j)){
+					d3.select("#data"+k).select("rect").transition().style("fill", colorOrange);
+				}
+				else{
+					d3.select("#data"+k).select("rect").transition().style("fill", colorDefault);
+				}
+
+			}
+			d3.select("#data"+state.i).select("rect").transition().style("fill", colorGreen);
+			d3.select("#data"+state.j).select("rect").transition().style("fill", colorGreen);
+			d3.select("#data"+state.pivotPos).select("rect").transition().style("fill", colorBrown);
+
+			if(state.isSwap){
+				var stringA = d3.transform(d3.select("#data"+state.i).attr("transform"));
+				var stringB = d3.transform(d3.select("#data"+state.j).attr("transform"));
+				d3.select("#data"+state.i).transition()
+					.attr("transform", "translate("+(stringB.translate[0])+", "+stringA.translate[1]+")")
+					.attr("id", "data"+(state.j));
+				d3.select("#data"+state.j).transition()
+					.attr("transform", "translate("+(stringA.translate[0])+", "+stringB.translate[1]+")")
+					.attr("id", "data"+(state.i));
+			}
+		}
+
+		while(stack.length>0){
+			var top = stack.pop();
+			var length = top[1];
+			var pivotPos = top[0];
+			var pivot = data[pivotPos];
+			console.log(top);
+
+			if(length>1){
+				var i=pivotPos+1;
+				var j=pivotPos+length-1;
+				var iNeedSwap=false;
+				var jNeedSwap=false;
+				while(i<j){
+					var tmpState = new state(pivotPos, length, i, j, false, false);
+					
+					if(data[i]<pivot){
+						i++;
+					}
+					else{
+						iNeedSwap=true;
+					}
+
+					if(data[j]>=pivot){
+						j--;
+					}
+					else{
+						jNeedSwap=true;
+					}
+					
+					if((iNeedSwap==true) && (jNeedSwap==true)){
+						tmpState.isSwap = true;
+						swap(i,j);
+						iNeedSwap=false;
+						jNeedSwap=false;
+						i++;
+						j--;
+					}
+					
+					stateStack.push(tmpState);
+				}
+				
+				var newPivotPos;
+				if(data[i]>pivot){
+					newPivotPos = i-1;
+				}
+				else{
+					newPivotPos = i;
+				}
+				swap(pivotPos, newPivotPos);
+				var tmpState = new state(pivotPos, length, pivotPos, newPivotPos, true, false);
+				stateStack.push(tmpState);
+				stack.push([newPivotPos+1, pivotPos+length-newPivotPos-1]);
+				stack.push([pivotPos, newPivotPos-pivotPos]);
+				console.log("pivot="+pivotPos+" new="+newPivotPos+" length="+length);
+				console.log(data);
+			}
+		}
+		var tmpState = new state(0, data.length, 0, 0, false, true);
+		stateStack.push(tmpState);
+
+		// for(var i=0; i<stateStack.length; i++){
+		// 	console.log(stateStack[i]);
+		// }
+
+		console.log("#### start animation ####"+stateStack.length);
+
+		intervalId = setInterval(function() {
+				if(animStep>stateStack.length-1){
+					clearInterval(intervalId);
+				}
+				console.log(animStep);
+				play(stateStack[animStep]);
+				animStep++;
+			}, tmAnimateInterval+100);
+	}
+	
+	var mergeSort = function(){
+		var stack=[];
+		var tmpStack=[];
+
+		var state = function(element, newPosition, left, mid, right, isPreState, isPostState){
+			this.element = element;
+			this.newPosition = newPosition;
+			this.left = left;
+			this.mid = mid;
+			this.right = right;
+			this.isPreState = isPreState;
+			this.isPostState = isPostState;
+		}
+
+		var play = function(){
+			var element = stateStack[animStep].element;
+			var newPosition = stateStack[animStep].newPosition;
+			var left = stateStack[animStep].left;
+			var mid = stateStack[animStep].mid;
+			var right = stateStack[animStep].right;
+			var isPreState = stateStack[animStep].isPreState;
+			var isPostState = stateStack[animStep].isPostState;
+			if(isPreState==true){
+				for(var i = left; i<=mid; i++){
+					d3.select("#data"+i).select("rect").transition().style("fill", colorGreen);
+				}
+				for(var i = mid+1; i<=right; i++){
+					d3.select("#data"+i).select("rect").transition().style("fill", colorOrange);
+				}
+			}
+			else if(isPostState==true){
+				for(var i = left; i<=right; i++){
+					d3.select("#data"+i).select("rect").transition().style("fill", colorDefault);
+				}
+			}
+			else{
+				var tmpD3 = d3.select("#data"+element);
+				var stringA = d3.transform(d3.select("#data"+element).attr("transform"));
+				var stringB = d3.transform(d3.select("#data"+newPosition).attr("transform"));
+
+
+				for(var i=newPosition; i<element; i++){
+					var stringC = d3.transform(d3.select("#data"+i).attr("transform"));
+					d3.select("#data"+i)
+						.transition()
+						.attr("transform", "translate("+(stringC.translate[0]+10)+", "+stringC.translate[1]+")")
+						.attr("id", "data"+(i+1));
+				}
+
+
+				tmpD3.transition()
+					.attr("transform", "translate("+stringB.translate[0]+", "+stringA.translate[1]+")")
+					.attr("id", "data"+newPosition);
+				tmpD3.select("rect")
+					.transition()
+					.style("fill", colorBlue);
+			}
+		}
+
+		tmpStack.push([0, data.length-1]);
+
+		while(tmpStack.length>0){
+			var tmp = tmpStack.pop();
+			var mid = Math.floor((tmp[1]+tmp[0])/2);
+			if(tmp[1]-tmp[0]<1){
+				continue;
+			}
+			tmpStack.push([tmp[0], mid]);
+			tmpStack.push([mid+1, tmp[1]]);
+			stack.push([tmp[0], tmp[1]]);
+		}
+		// for(var i=0; i<stack.length; i++){
+		// 	console.log(stack[i]);
+		// }
+
+
+		while(stack.length>0){
+			var tmpData = [];
+			var tmp = stack.pop();
+			var left, mid, right;
+			left = tmp[0];
+			right = tmp[1];
+			mid = Math.floor((right+left)/2);
+			var preState = new state(0, 0, left, mid, right, true, false);
+			stateStack.push(preState);
+			
+
+			for(var i=left, j=mid+1, k=0; k<=(right-left); k++){
+				var newPosition = left+k;
+				var newLeft = i+j-mid-1;
+				var newMid = j;
+				if(i==mid+1){
+					tmpData[k]=data[j];
+					var tmpState = new state(newMid, newPosition, newLeft, newMid, right, false, false);
+					stateStack.push(tmpState);
+					j++;
+					continue;
+				}
+				if(j==right+1){
+					tmpData[k]=data[i];
+					var tmpState = new state(newLeft, newPosition, newLeft, newMid, right, false, false);
+					stateStack.push(tmpState);
+					i++;
+					continue;
+				}
+				if(data[i]<data[j]){
+					tmpData[k]=data[i];
+					var tmpState = new state(newLeft, newPosition, newLeft, newMid, right, false, false);
+					stateStack.push(tmpState);
+					i++;	
+				}
+				else{
+					tmpData[k]=data[j];
+					var tmpState = new state(newMid, newPosition, newLeft, newMid, right, false, false);
+					stateStack.push(tmpState);
+					j++;
+				}
+			}
+			for(var i=0; i<=(right-left); i++){
+				data[left+i]=tmpData[i];
+			}
+			var postState = new state(0, 0, left, mid, right, false, true);
+			stateStack.push(postState);
+		}
+
+		for(var i=0; i<stateStack.length; i++){
+			var state = stateStack[i];
+			console.log("step="+i+" i="+state.element+" j="+state.newPosition+" left="+state.left+" mid="+state.mid+" right="+state.right+" pre="+state.isPreState+" post="+state.isPostState);
+		}
+		
+		console.log("#### start animation ####"+stateStack.length);
+
+		intervalId = setInterval(function() {
+				if(animStep>stateStack.length-1){
+					clearInterval(intervalId);
+				}
+				console.log(animStep);
+				play(stateStack, animStep);
+				animStep++;
+			}, tmAnimateInterval-100);
+	}
+	var animStep = 0;
+	var stateStack = new Array();
+
+	this.doSort = function(){
+		var sortTable = {
+			quick: quickSort,
+			merge: mergeSort,
+			bubble: bubbleSort,
+			selection: selectionSort,
+			insertion: insertionSort
+		};
+		
+
+		var sel = document.getElementById('method');
+		var alg = sel.options[sel.selectedIndex].value;
+		console.log(alg);
+		var sortFunction = sortTable[alg];
+		if(sortFunction){
+			sortFunction();
+		}
+		else{
+			console.log("error, sortFunction = null!");
+		}
+
+	}
+
+
+	this.nextStep = function(){
+		this.next(stateStack[animStep++]);
+	}
+}
+
+var g = new sort();
+
+function init(){
+	g.genData();
+	// g.doSort();
+	// g.mergeSort();
+}
+
+function doSort(){
+	g.doSort();
+	// g.nextStep();
+}
+
+function hideCanvas(){
+	$("#viz-canvas").hide();
+}
+
+function showCanvas(){
+	$("#viz-canvas").show();
+}
+
+function reinit(){
+	d3.select("#viz-canvas").selectAll("g").remove();
+}
+
+</script> 
+
+<body>
+<p>Sorting Algorithm Animation</p>
+<select id="method">
+	<option value="bubble" selected>bubble</option>
+	<option value="selection">selection</option>
+	<option value="insertion">insertion</option>
+	<option value="quick">quick</option>
+	<option value="merge">merge</option>
+</select>
+&nbsp;
+<button type="init" onclick="init()">init</button>
+<button type="sort" onclick="doSort()">sort</button>
+<button type="clear" onclick="reinit()">clear</button>
+
+<div id="viz">
+  <svg id="viz-canvas" height="320" width="320" style="fill: rgb(245, 245, 220)">
+  </svg>
+  <br>
+  
+</div>
+</body>
+</html>
